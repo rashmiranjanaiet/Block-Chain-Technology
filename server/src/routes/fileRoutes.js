@@ -2,16 +2,20 @@ import fs from "node:fs/promises";
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
 import { upload } from "../middleware/upload.js";
+import LedgerEvent from "../models/LedgerEvent.js";
 import SharedFile from "../models/SharedFile.js";
 import { generateAccessCode } from "../utils/accessCode.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { config } from "../config.js";
+import { hashStoredFile } from "../utils/hashStoredFile.js";
+import { recordLedgerEvent } from "../utils/ledger.js";
 import { removeStoredFile } from "../utils/removeStoredFile.js";
 import {
   getStoredFilePath,
   sendStoredFile
 } from "../utils/sendStoredFile.js";
 import { serializeFile } from "../utils/serializeFile.js";
+import { serializeLedgerEvent } from "../utils/serializeLedgerEvent.js";
 
 const router = Router();
 
@@ -54,6 +58,20 @@ router.get(
   })
 );
 
+router.get(
+  "/ledger",
+  requireAuth,
+  asyncHandler(async (request, response) => {
+    const events = await LedgerEvent.find({ user: request.user._id })
+      .sort({ blockHeight: -1 })
+      .limit(24);
+
+    response.json({
+      events: events.map((event) => serializeLedgerEvent(event))
+    });
+  })
+);
+
 router.post(
   "/upload",
   requireAuth,
@@ -69,6 +87,9 @@ router.post(
       config.codeExpiryHours > 0
         ? new Date(Date.now() + config.codeExpiryHours * 60 * 60 * 1000)
         : null;
+    const integrityHash = await hashStoredFile({
+      storedName: request.file.filename
+    });
 
     const file = await SharedFile.create({
       user: request.user._id,
@@ -76,9 +97,28 @@ router.post(
       storedName: request.file.filename,
       mimeType: request.file.mimetype,
       size: request.file.size,
+      integrityHash,
       accessCode,
       expiresAt
     });
+
+    try {
+      const event = await recordLedgerEvent({
+        userId: request.user._id,
+        file,
+        eventType: "minted",
+        details: {
+          expiresAt: expiresAt ? expiresAt.toISOString() : null
+        }
+      });
+
+      file.chainBlockHeight = event.blockHeight;
+      file.chainBlockHash = event.blockHash;
+      file.chainTransactionHash = event.transactionHash;
+      await file.save();
+    } catch (error) {
+      console.error("Failed to record minted ledger event.", error);
+    }
 
     response.status(201).json({
       file: serializeFile(file)
@@ -120,6 +160,18 @@ router.delete(
     }
 
     await SharedFile.deleteOne({ _id: file._id });
+    try {
+      await recordLedgerEvent({
+        userId: request.user._id,
+        file,
+        eventType: "deleted",
+        details: {
+          removedBy: "owner"
+        }
+      });
+    } catch (error) {
+      console.error("Failed to record delete ledger event.", error);
+    }
     await removeStoredFile(file);
 
     response.json({ message: "File deleted successfully." });

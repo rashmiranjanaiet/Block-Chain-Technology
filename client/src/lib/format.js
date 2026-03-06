@@ -27,6 +27,27 @@ export const formatDateTime = (value) => {
   }).format(new Date(value));
 };
 
+export const shortenHash = (value, start = 12, end = 8) => {
+  if (!value) {
+    return "Pending";
+  }
+
+  if (value.length <= start + end) {
+    return value;
+  }
+
+  return `${value.slice(0, start)}...${value.slice(-end)}`;
+};
+
+export const buildWalletAddress = (user) => {
+  const seed = `${user?.id ?? ""}${user?.id ?? ""}${(user?.email ?? "")
+    .toLowerCase()
+    .replace(/[^a-f0-9]/g, "")}`;
+  const address = `${seed}${"0".repeat(40)}`.slice(0, 40);
+
+  return `0x${address}`;
+};
+
 const previewableMimeTypes = ["application/pdf", "application/json"];
 const previewablePrefixes = ["image/", "video/", "audio/", "text/"];
 

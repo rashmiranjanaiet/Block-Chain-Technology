@@ -1,4 +1,5 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import BlockchainDashboardPage from "./pages/BlockchainDashboardPage.jsx";
 import NavBar from "./components/NavBar.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import { AuthProvider } from "./context/AuthContext.jsx";
@@ -25,6 +26,14 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <DashboardPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/blockchain-dashboard"
+                  element={
+                    <ProtectedRoute>
+                      <BlockchainDashboardPage />
                     </ProtectedRoute>
                   }
                 />

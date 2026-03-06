@@ -43,6 +43,9 @@ function NavBar() {
               <NavLink to="/dashboard" className={linkClassName}>
                 Dashboard
               </NavLink>
+              <NavLink to="/blockchain-dashboard" className={linkClassName}>
+                Blockchain
+              </NavLink>
               <button
                 type="button"
                 onClick={logout}

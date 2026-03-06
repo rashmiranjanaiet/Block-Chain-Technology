@@ -8,6 +8,16 @@ const safeDecode = (value, fallback) => {
   }
 };
 
+const performFetch = async (url, options) => {
+  try {
+    return await fetch(url, options);
+  } catch (_error) {
+    throw new Error(
+      "Cannot reach the API. Check VITE_API_URL and confirm the Render backend is running."
+    );
+  }
+};
+
 const buildHeaders = ({ headers = {}, token, isFormData }) => {
   const finalHeaders = new Headers(headers);
 
@@ -24,16 +34,37 @@ const buildHeaders = ({ headers = {}, token, isFormData }) => {
 
 const parseError = async (response) => {
   try {
-    const data = await response.json();
-    return data.message || "Request failed.";
+    const contentType = response.headers.get("Content-Type") || "";
+
+    if (contentType.includes("application/json")) {
+      const data = await response.json();
+      return data.message || `Request failed (${response.status}).`;
+    }
+
+    const body = await response.text();
+    const looksLikeHtml = /<!doctype html>|<html/i.test(body);
+
+    if (looksLikeHtml) {
+      if (response.status === 404) {
+        return "API route not found. Check VITE_API_URL in your Render frontend settings.";
+      }
+
+      if ([502, 503, 504].includes(response.status)) {
+        return "Render backend is unavailable or waking up. Wait a minute and try again.";
+      }
+
+      return `Server returned HTML (${response.status}). Check your Render API URL.`;
+    }
+
+    return body.trim() || `Request failed (${response.status}).`;
   } catch (_error) {
-    return "Request failed.";
+    return `Request failed (${response.status}).`;
   }
 };
 
 const request = async (path, { body, headers, method = "GET", token } = {}) => {
   const isFormData = body instanceof FormData;
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await performFetch(`${API_BASE}${path}`, {
     method,
     headers: buildHeaders({ headers, token, isFormData }),
     body:
@@ -57,6 +88,8 @@ export const fetchCurrentUser = (token) => request("/auth/me", { token });
 
 export const fetchFiles = (token) => request("/files", { token });
 
+export const fetchLedger = (token) => request("/files/ledger", { token });
+
 export const uploadFile = (token, file) => {
   const formData = new FormData();
   formData.append("file", file);
@@ -75,7 +108,7 @@ export const deleteFile = (token, fileId) =>
   });
 
 export const downloadOwnerFile = async (token, fileId) => {
-  const response = await fetch(`${API_BASE}/files/${fileId}/download`, {
+  const response = await performFetch(`${API_BASE}/files/${fileId}/download`, {
     headers: buildHeaders({ token, isFormData: false })
   });
 
@@ -94,7 +127,7 @@ export const downloadOwnerFile = async (token, fileId) => {
 };
 
 export const accessSharedFile = async (code) => {
-  const response = await fetch(`${API_BASE}/access/file`, {
+  const response = await performFetch(`${API_BASE}/access/file`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"

@@ -3,6 +3,7 @@ import { Router } from "express";
 import SharedFile from "../models/SharedFile.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { normalizeAccessCode } from "../utils/accessCode.js";
+import { recordLedgerEvent } from "../utils/ledger.js";
 import { removeStoredFile } from "../utils/removeStoredFile.js";
 import {
   getStoredFilePath,
@@ -64,6 +65,19 @@ router.post(
         message: "This file has already been accessed. Code expired."
       });
       return;
+    }
+
+    try {
+      await recordLedgerEvent({
+        userId: claimedFile.user,
+        file: claimedFile,
+        eventType: "claimed",
+        details: {
+          accessedAt: now.toISOString()
+        }
+      });
+    } catch (error) {
+      console.error("Failed to record claim ledger event.", error);
     }
 
     setStoredFileHeaders(response, claimedFile);

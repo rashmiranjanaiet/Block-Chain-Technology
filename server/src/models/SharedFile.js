@@ -23,12 +23,28 @@ const sharedFileSchema = new mongoose.Schema(
       type: Number,
       required: true
     },
+    integrityHash: {
+      type: String,
+      default: null
+    },
     accessCode: {
       type: String,
       required: true,
       unique: true,
       minlength: 16,
       maxlength: 16
+    },
+    chainBlockHeight: {
+      type: Number,
+      default: null
+    },
+    chainBlockHash: {
+      type: String,
+      default: null
+    },
+    chainTransactionHash: {
+      type: String,
+      default: null
     },
     accessCount: {
       type: Number,
