@@ -1,0 +1,28 @@
+import { formatAccessCode } from "./accessCode.js";
+
+const getStatus = (file) => {
+  if (file.accessCount > 0) {
+    return "used";
+  }
+
+  if (file.expiresAt && new Date(file.expiresAt) <= new Date()) {
+    return "expired";
+  }
+
+  return "unused";
+};
+
+export const serializeFile = (file) => ({
+  id: file._id.toString(),
+  originalName: file.originalName,
+  mimeType: file.mimeType,
+  size: file.size,
+  accessCode: file.accessCode,
+  formattedAccessCode: formatAccessCode(file.accessCode),
+  accessCount: file.accessCount,
+  status: getStatus(file),
+  createdAt: file.createdAt,
+  updatedAt: file.updatedAt,
+  expiresAt: file.expiresAt,
+  lastAccessedAt: file.lastAccessedAt
+});
