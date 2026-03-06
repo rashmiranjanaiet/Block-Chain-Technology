@@ -70,3 +70,39 @@ npm run build
 ```
 
 This builds the frontend and validates the server source tree.
+
+## Deploy On Render
+
+This repo includes a [render.yaml](/c:/Users/It%20Computer%20Point/Downloads/block%20chain%20technology/render.yaml) Blueprint for Render.
+
+### Recommended setup
+
+- Frontend: Render Static Site from `client/`
+- Backend: Render Web Service from `server/`
+- Database: MongoDB Atlas or another hosted MongoDB instance
+- File storage: Render persistent disk mounted for the backend uploads directory
+
+### Steps
+
+1. Push this project to GitHub.
+2. In Render, choose `New` -> `Blueprint` and connect the repo.
+3. Render will detect [render.yaml](/c:/Users/It%20Computer%20Point/Downloads/block%20chain%20technology/render.yaml) and create:
+   - `block-chain-technology-api`
+   - `block-chain-technology-web`
+4. During setup, provide these environment variables:
+
+Backend:
+
+- `MONGO_URI`: your MongoDB connection string
+- `CLIENT_URLS`: your frontend Render URL, for example `https://block-chain-technology-web.onrender.com`
+
+Frontend:
+
+- `VITE_API_URL`: your backend Render URL plus `/api`, for example `https://block-chain-technology-api.onrender.com/api`
+
+### Important notes
+
+- The backend service uses a persistent disk because uploaded files are stored on the local filesystem.
+- The Blueprint mounts that disk at `/opt/render/project/src/server/uploads`, which matches the server's `UPLOAD_DIR=../uploads` setting.
+- The static frontend includes a rewrite from `/*` to `/index.html` so React Router works on refresh and direct links.
+- If you change either Render URL later, update both `CLIENT_URLS` and `VITE_API_URL` and redeploy.
